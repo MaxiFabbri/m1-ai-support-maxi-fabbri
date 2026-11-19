@@ -1,0 +1,6 @@
+# Para cargar las claves de .env.
+python-dotenv>=1.0,<2.0
+# SDK oficial de Google para llamar a Gemini.
+google-genai>=2.0,<3.0
+# SDK oficial de OpenAI para Chat Completions.
+openai>=3.0,<4.0

@@ -1,0 +1,11 @@
+# Opciones de la aplicación. Las claves de API van en .env.
+# Proveedor: "gemini" u "openai". El router selecciona el adaptador y su modelo.
+LLM_PROVIDER = "gemini"
+# LLM_PROVIDER = "openai"
+
+LLM_MAX_OUTPUT_TOKENS = 300
+
+# Parámetros de generación para experimentar con las respuestas.
+LLM_TEMPERATURE = 0.2
+LLM_TOP_P = 0.85
+
