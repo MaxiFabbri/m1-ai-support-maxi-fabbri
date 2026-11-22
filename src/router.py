@@ -1,6 +1,6 @@
 from backoff import call_with_backoff
 from config import AppConfig
-from providers import GeminiProvider, OpenAIProvider
+from providers import GeminiProvider, NvidiaProvider, OpenAIProvider
 
 
 class Router:
@@ -14,9 +14,9 @@ class Router:
 
         # Cada nombre del diccionario apunta al objeto que sabe llamar a su API.
         self.adapters = {
-            "gemini": GeminiProvider(config, model="gemini-3.5-flash-lite"),
-            "openai": OpenAIProvider(config, model="gpt-4.1-mini"),
-            # "openai": OpenAIProvider(config, model="gpt-6-luna"), # no acepta temperatura 0.2
+            "gemini": GeminiProvider(config),
+            "openai": OpenAIProvider(config),
+            "nvidia": NvidiaProvider(config),
         }
         self.primary = config.default_provider
 

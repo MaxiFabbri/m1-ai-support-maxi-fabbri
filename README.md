@@ -30,11 +30,12 @@ y otros temas, respectivamente.
 ## Estado actual
 
 `src/main.py` recibe un prompt, rechaza entradas vacías, carga la configuración
-y pasa el texto al router. El router delega la llamada a `GeminiProvider` o
-`OpenAIProvider`, según `LLM_PROVIDER`, y
+y pasa el texto al router. El router delega la llamada a `GeminiProvider`,
+`OpenAIProvider` o `NvidiaProvider`, según `LLM_PROVIDER`, y
 `main.py` imprime su respuesta.
-Los reportes de consumo, el contrato JSON y
-las demás funcionalidades del recorrido se incorporarán en pasos posteriores.
+El consumo se muestra con los campos originales de cada SDK mediante `src/usage.py`.
+El contrato JSON validado y las demás funcionalidades del recorrido se incorporarán
+en pasos posteriores.
 
 ## Primer paso implementado
 
@@ -53,30 +54,35 @@ python -m pip install -r requirements.txt
 ```
 
 Para un proyecto nuevo, copiá `.env.example` a `.env` y completá tus claves.
-Si ya tenés `.env`, conservá el existente: contiene solo las claves de API.
+Si ya tenés `.env`, conservá el existente: contiene las claves de API, los modelos
+y la URL del endpoint de NVIDIA.
 Las opciones que se editan habitualmente están en `config.toml`, en la raíz del
-proyecto: `LLM_PROVIDER`, `LLM_MAX_OUTPUT_TOKENS`,
-`LLM_TEMPERATURE` y `LLM_TOP_P`.
+proyecto: `LLM_PROVIDER` y `PROMPT_FILE`. Los parámetros de generación están en
+el YAML seleccionado por `PROMPT_FILE`.
 El proveedor inicial es `gemini`. Este archivo puede versionarse porque no
-contiene credenciales. El router registra `gemini-3.5-flash-lite` para Gemini y
-`gpt-4.1-mini` para OpenAI. Otros proveedores y modelos podrán incorporarse sin
-agregar parámetros específicos a `AppConfig`.
+contiene credenciales. El router registra los tres adaptadores. Cada uno lee su
+modelo desde `.env` al recibir una consulta; los nombres de modelos no están
+fijados en el código del router.
 
-Para usar OpenAI, cambiá `LLM_PROVIDER` a `"openai"` y configurá `OPENAI_API_KEY`
-en `.env`. La clave se lee solo cuando se consulta ese proveedor. El comando de
-ejecución es el mismo. Gemini sigue seleccionado inicialmente.
-GPT-4.1 mini requiere acceso y saldo o facturación en la API de OpenAI;
-no tiene nivel gratuito según la [ficha oficial](https://developers.openai.com/api/docs/models/gpt-4.1-mini).
+Las variables requeridas para cada proveedor son:
 
-Según los [precios oficiales de Google](https://aistudio.google.com/docs/pricing#gemini-3.5-flash-lite),
-este modelo ofrece entrada y salida de texto gratuitas en el nivel Free Tier.
-La gratuidad depende de que el proyecto de la clave use ese nivel y de sus cuotas;
-el nombre del modelo por sí solo no garantiza costo cero en un proyecto de pago.
+| `LLM_PROVIDER` | Variables de `.env` |
+| --- | --- |
+| `openai` | `OPENAI_API_KEY`, `OPENAI_MODEL_ID` |
+| `gemini` | `GEMINI_API_KEY`, `GEMINI_MODEL_ID` |
+| `nvidia` | `NVIDIA_API_KEY`, `NVIDIA_MODEL_ID`, `NVIDIA_BASE_URL` |
+
+Para usar NVIDIA, cambiá `LLM_PROVIDER = "nvidia"`. Para el endpoint alojado de
+NVIDIA, la URL base es `https://integrate.api.nvidia.com/v1`; también se puede
+configurar otro endpoint compatible mediante `NVIDIA_BASE_URL`.
+El comando de ejecución es el mismo para los tres proveedores. Se comprueban
+solamente las variables del seleccionado. Las variables ya definidas en el
+entorno de la terminal tienen prioridad sobre `.env`, como en `load_dotenv`.
 
 `main.py` crea la configuración con `AppConfig(project_dir / "config.toml")`.
 Su constructor lee el archivo usando `tomllib` y guarda las opciones generales.
 No hay parámetros ni atributos separados para cada proveedor o modelo.
-`GeminiProvider` carga `GEMINI_API_KEY` desde `.env` al recibir una consulta.
+`GeminiProvider` carga `GEMINI_API_KEY` y `GEMINI_MODEL_ID` al recibir una consulta.
 Si todavía no tenés una clave,
 podés crearla en [Google AI Studio](https://aistudio.google.com/api-keys).
 
@@ -98,14 +104,20 @@ en `self.adapters` y el proveedor seleccionado en `self.primary`. Su método
 `ask` delega la consulta mediante `self.adapters[self.primary].ask(prompt)` y
 la ejecuta dentro de `call_with_backoff`, definido en `src/backoff.py`.
 
-`src/providers.py` contiene la clase base `Provider` con el método `ask` y las
-implementaciones `GeminiProvider` y `OpenAIProvider`. Cada una utiliza el SDK
-de su proveedor, pasa el límite de tokens, la temperatura y top-p desde
-`config.toml` y devuelve texto. El modelo se elige en el router y se entrega
-al crear el adaptador. `OpenAIProvider` usa Chat Completions, como el ejemplo
+`src/providers/` contiene la clase base `Provider` en `base.py` y las
+implementaciones en `gemini_provider.py`, `openai_provider.py` y
+`nvidia_provider.py`. Cada una utiliza
+el SDK de su proveedor, pasa el límite de tokens, la temperatura y top-p desde
+el YAML activo y devuelve texto. El modelo se carga desde la variable
+`*_MODEL_ID` correspondiente. `OpenAIProvider` usa Chat Completions, como el ejemplo
 del curso, con `messages=[{"role": "user", "content": prompt}]`. El límite
 de tokens se envía como `max_completion_tokens`, según la
 [referencia oficial](https://developers.openai.com/api/reference/python/resources/chat/subresources/completions/methods/create).
+`NvidiaProvider` reutiliza el SDK de OpenAI con su propia clave y `base_url`,
+y traduce `max_output_tokens` del YAML a `max_tokens`, como indica la
+[referencia de NVIDIA](https://docs.api.nvidia.com/nim/reference/llm-apis).
+El consumo se muestra tal como llega en `usage` o `usage_metadata`, también
+para NVIDIA. No hace falta instalar otro SDK.
 Para incorporar otro proveedor, se agregará una clase que implemente `ask`
 y una entrada en `self.adapters`. El fallback por cuota queda para una etapa posterior.
 Los reintentos internos de los SDK están desactivados para controlarlos desde
@@ -135,8 +147,8 @@ todavía está pendiente. Ver las [indicaciones oficiales sobre rate limits](htt
 
 ## Parámetros de generación y rol
 
-`config.toml` define `LLM_TEMPERATURE = 0.2` y `LLM_TOP_P = 0.85` como valores
-actuales. `AppConfig` los lee como `config.temperature` y `config.top_p`;
+El YAML activo define `parameters.temperature`, `parameters.top_p` y
+`parameters.max_output_tokens`. `PromptBuilder` los lee en `builder.parameters`;
 `GeminiProvider` los pasa a `GenerateContentConfig` mediante `temperature` y `top_p`;
 `OpenAIProvider` los pasa directamente a `chat.completions.create`.
 La temperatura modifica el muestreo de las posibles continuaciones; top-p limita
@@ -146,8 +158,31 @@ no garantías de exactitud ni de respuestas idénticas.
 La consulta recibida desde la terminal se envía explícitamente con `role="user"`.
 Ese rol identifica el mensaje como una consulta del usuario, como en los ejemplos
 del curso. En Gemini se representa con `types.Content(role="user", parts=[...])`.
-Esta etapa no agrega una identidad ni instrucciones del sistema al asistente.
-Los prompts versionados en YAML se incorporarán más adelante.
+El mensaje contiene la plantilla completa, que incluye las instrucciones, el
+contexto y la consulta insertada en `{consulta}`.
+
+## Plantillas YAML versionadas
+
+`config.toml` selecciona la plantilla mediante:
+
+```toml
+PROMPT_FILE = "prompts/support_prompt_v1.yaml"
+```
+
+Ese archivo contiene metadatos (`nombre`, `version`, `tecnica`, `fecha`, `notas`),
+el mapa `parameters` y el texto `plantilla`. `PromptBuilder` utiliza `yaml.safe_load`
+para leerlo, comprueba los parámetros y completa la plantilla con
+`plantilla.format(consulta=prompt)`. El ticket se inserta una vez como dato y no
+se vuelve a interpretar como plantilla. Las llaves literales de los ejemplos
+JSON deben duplicarse en el YAML: `{{"category": "..."}}`.
+
+Para probar otra versión, copiá el YAML a `support_prompt_v2.yaml`, actualizá sus
+metadatos y cambiá `PROMPT_FILE`. Instrucciones, contexto y parámetros se versionan
+juntos. Los anteriores archivos TXT se conservan como referencia, pero ya no se leen.
+Las diferencias se registran en `prompts/CHANGELOG.md`.
+
+La plantilla actual pide JSON de clasificación con `category`; esto es una
+instrucción al modelo y todavía no garantiza la validación automática de la salida.
 
 ## Orientación a objetos y SOLID
 
@@ -157,9 +192,11 @@ Los componentes preparados para las próximas etapas separan responsabilidades:
 | --- | --- |
 | `src/config.py` | `AppConfig` lee `config.toml` al crear el objeto. |
 | `src/cli.py` | `SupportCLI` recibe una instancia de configuración y gestiona la interacción con la terminal. |
-| `src/router.py` | `Router` registra los adaptadores con sus modelos y delega la consulta al proveedor seleccionado. |
+| `src/router.py` | `Router` registra los adaptadores y delega la consulta al proveedor seleccionado. |
 | `src/backoff.py` | Ejecuta la consulta con espera creciente ante un límite temporal de solicitudes. |
-| `src/providers.py` | `Provider` define el método común; `GeminiProvider` y `OpenAIProvider` cargan sus claves y llaman a sus APIs. |
+| `src/providers/` | `Provider` define el método común; los tres adaptadores cargan su configuración de entorno y llaman a sus APIs. |
+| `src/prompt_builder.py` | Lee el YAML activo, valida sus parámetros y completa la plantilla con la consulta. |
+| `src/usage.py` | Muestra el consumo original del SDK, sin estimar costos ni normalizar campos. |
 | `src/main.py` | Recibe el prompt, crea la configuración y el router e imprime el resultado. |
 
 La configuración se entrega al constructor del router mediante `Router(config)`.
@@ -169,7 +206,7 @@ modelos más adelante no requerirá sumar parámetros por proveedor a esa clase.
 
 `Provider.ask(prompt)` define un contrato común que devuelve texto. El router
 crea los adaptadores en su constructor y utiliza su método `ask` para delegar
-la consulta. Hay dos implementaciones: `GeminiProvider` y `OpenAIProvider`.
+la consulta. Hay tres implementaciones: `GeminiProvider`, `OpenAIProvider` y `NvidiaProvider`.
 La creación externa de adaptadores y el fallback quedan para etapas posteriores.
 
 ## Recorrido del proyecto
@@ -200,7 +237,7 @@ uno entre FastAPI, caché, LLM-as-judge o comparativa de modelos.
 
 ## Decisiones pendientes
 
-- Comparar los proveedores configurados: Gemini 3.5 Flash-Lite y GPT-4.1 mini.
+- Comparar los proveedores configurados (Gemini, OpenAI y NVIDIA) con los modelos seleccionados en `.env`.
 - Precisar los tipos y restricciones de cada campo del contrato.
 - Definir qué información y políticas de soporte tendrá disponible el modelo.
 - Documentar el uso de IA como apoyo al desarrollo, como solicita la guía.

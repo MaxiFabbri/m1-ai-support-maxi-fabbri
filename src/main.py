@@ -12,11 +12,14 @@ def main() -> None:
     parser.add_argument("prompt", help="Texto del prompt entre comillas.")
     args = parser.parse_args()
 
+    print("Argumentos recibidos:", args.prompt)
     if not args.prompt.strip():
         parser.error("El prompt no puede estar vacío.")
 
     project_dir = Path(__file__).resolve().parent.parent
     config = AppConfig(project_dir / "config.toml")
+    print("Configuración cargada: ", config.__dict__)
+    print("***********************************************************************************")
     try:
         router = Router(config)
         answer = router.ask(args.prompt)

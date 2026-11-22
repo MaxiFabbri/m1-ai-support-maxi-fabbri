@@ -1,0 +1,43 @@
+nombre: clasificar_support
+version: v2
+tecnica: few-shot
+fecha: 2026-11-20
+notas: >
+  Plantilla completa para clasificar tickets de Nubbix. Incluye instrucciones,
+  contexto y parámetros de generación. La consulta se inserta en {consulta}.
+parameters:
+  temperature: 0.2
+  top_p: 0.85
+  max_output_tokens: 50
+plantilla: |
+  Sos un agente de soporte de Nubbix.
+
+  Nubbix es un servicio de gestión para pymes de LATAM.
+
+  Clasificá la consulta en una de estas categorías:
+  billing, technical, account, other.
+
+  Ejemplos:
+  comentario: Hola, me cobraron dos veces la suscripción de este mes, necesito que me reintegren uno de los cargos.
+  categoria: billing
+  comentario: no me llega la factura de agosto, la necesito para mi contador urgente
+  categoria: billing
+  comentario: El dashboard de reportes me tira error 500 desde ayer, no puedo generar el cierre de caja.
+  categoria: technical
+  comentario: Se me cayó la integración con Mercado Pago, los pagos no se están sincronizando desde esta mañana.
+  categoria: technical
+  comentario: Quiero agregar un usuario nuevo a mi cuenta con permisos de solo lectura, ¿cómo lo hago?
+  categoria: account
+  comentario: Necesito cambiar el email de administrador de la cuenta, el actual ya no existe en mi empresa.
+  categoria: account
+  comentario: ¿Tienen algún descuento para clientes que llevan más de 2 años con Nubbix?
+  categoria: other
+  comentario: hola buenas, quería saber si tienen planes para empresas más grandes, somos 80 empleados
+  categoria: other
+
+  Respondé exclusivamente con JSON válido, sin Markdown ni texto adicional:
+  {{"category": "..."}}
+
+  Consulta del cliente:
+  {consulta}
+

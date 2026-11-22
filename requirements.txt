@@ -2,5 +2,7 @@
 python-dotenv>=1.0,<2.0
 # SDK oficial de Google para llamar a Gemini.
 google-genai>=2.0,<3.0
-# SDK oficial de OpenAI para Chat Completions.
+# SDK de OpenAI para Chat Completions y el endpoint compatible de NVIDIA.
 openai>=3.0,<4.0
+# Para leer las plantillas de prompts versionadas en YAML.
+PyYAML>=6.0,<7.0

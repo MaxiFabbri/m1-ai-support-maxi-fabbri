@@ -12,6 +12,4 @@ class AppConfig:
 
         # Guardamos esas opciones en este objeto, sin valores duplicados.
         self.default_provider = settings["LLM_PROVIDER"].strip().lower()
-        self.max_output_tokens = settings["LLM_MAX_OUTPUT_TOKENS"]
-        self.temperature = settings["LLM_TEMPERATURE"]
-        self.top_p = settings["LLM_TOP_P"]
+        self.prompt_path = (config_path.resolve().parent / settings["PROMPT_FILE"]).resolve()
