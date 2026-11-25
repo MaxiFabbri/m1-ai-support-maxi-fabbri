@@ -4,4 +4,4 @@ LLM_PROVIDER = "gemini"
 # LLM_PROVIDER = "openai"
 
 # Plantilla activa. Su YAML contiene el prompt y los parámetros de generación.
-PROMPT_FILE = "prompts/support_prompt_v2.yaml"
+PROMPT_FILE = "prompts/support_prompt_v5.yaml"

@@ -1,32 +1,30 @@
-from backoff import call_with_backoff
 from config import AppConfig
 from providers import GeminiProvider, NvidiaProvider, OpenAIProvider
 
 
 class Router:
-    """Elige un proveedor y le delega la consulta."""
+    """Selecciona un proveedor y le delega los mensajes ya preparados."""
 
-    def __init__(self, config: AppConfig):
-        self.config = config
-        print("====================================================================")
-        print(f"Configuraciones cargadas: {self.config.__dict__}")
-        print("====================================================================")
-
-        # Cada nombre del diccionario apunta al objeto que sabe llamar a su API.
-        self.adapters = {
-            "gemini": GeminiProvider(config),
-            "openai": OpenAIProvider(config),
-            "nvidia": NvidiaProvider(config),
-        }
+    def __init__(self, config: AppConfig, provider=None):
+        self.adapters = self._crear_adaptadores()
         self.primary = config.default_provider
+        if provider is not None:
+            self.primary = provider.strip().lower()
+        self._validar_proveedor()
 
+    def _crear_adaptadores(self) -> dict:
+        return {
+            "gemini": GeminiProvider(),
+            "openai": OpenAIProvider(),
+            "nvidia": NvidiaProvider(),
+        }
+
+    def _validar_proveedor(self) -> None:
         if self.primary not in self.adapters:
             raise ValueError(f"El proveedor '{self.primary}' todavía no está implementado.")
 
-    def ask(self, prompt: str) -> str:
-        # Esta función guarda la consulta para poder volver a ejecutarla.
-        print(f"Enrutando la consulta '{self.primary}'... '{prompt}'")
-        def consulta():
-            return self.adapters[self.primary].ask(prompt)
+    def ask(self, messages, parameters) -> str:
+        return self.adapters[self.primary].ask(messages, parameters)
 
-        return call_with_backoff(consulta)
+    def obtener_usage(self):
+        return self.adapters[self.primary].last_usage

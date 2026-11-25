@@ -6,3 +6,5 @@ google-genai>=2.0,<3.0
 openai>=3.0,<4.0
 # Para leer las plantillas de prompts versionadas en YAML.
 PyYAML>=6.0,<7.0
+# Para validar el contrato de las respuestas del modelo.
+pydantic>=2.0,<3.0

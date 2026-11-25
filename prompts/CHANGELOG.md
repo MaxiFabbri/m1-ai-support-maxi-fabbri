@@ -24,6 +24,15 @@ versiones de las plantillas de prompts.
 
 ## Historial
 
+### Contrato validado con Pydantic — 2026-11-25
+
+- **Archivo nuevo:** `support_prompt_v5.yaml`, seleccionado en `config.toml`.
+- **Versión anterior:** `support_prompt_v4.yaml`, conservada sin cambios.
+- **Cambios:** solicita `answer`, `confidence`, `category` y `actions` con los tipos y límites definidos en `SupportResponse`.
+- **Parámetros:** el límite de salida pasa de 50 a 400 tokens para permitir los cuatro campos.
+- **Validación:** se comprueba una sola respuesta en `main.py`; los reintentos quedan pendientes.
+- **Verificación:** respuestas simuladas; no se realizaron llamadas a APIs ni evaluaciones con modelos reales.
+
 ### Plantilla completa en YAML — 2026-11-20
 
 - **Archivo activo:** `support_prompt_v1.yaml`.

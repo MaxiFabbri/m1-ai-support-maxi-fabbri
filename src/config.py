@@ -3,13 +3,23 @@ from pathlib import Path
 
 
 class AppConfig:
-    """Reúne la configuración que necesita la aplicación."""
+    """Carga las opciones generales de config.toml."""
 
     def __init__(self, config_path: Path):
-        # Leemos las opciones generales desde el archivo recibido.
-        with config_path.open("rb") as file:
-            settings = tomllib.load(file)
+        settings = self._leer_configuracion(config_path)
+        self.default_provider = self._leer_texto(settings, "LLM_PROVIDER").lower()
+        prompt_file = self._leer_texto(settings, "PROMPT_FILE")
+        self.prompt_path = (config_path.resolve().parent / prompt_file).resolve()
 
-        # Guardamos esas opciones en este objeto, sin valores duplicados.
-        self.default_provider = settings["LLM_PROVIDER"].strip().lower()
-        self.prompt_path = (config_path.resolve().parent / settings["PROMPT_FILE"]).resolve()
+    def _leer_configuracion(self, config_path: Path) -> dict:
+        try:
+            with config_path.open("rb") as file:
+                return tomllib.load(file)
+        except (OSError, tomllib.TOMLDecodeError) as error:
+            raise ValueError(f"No se pudo cargar la configuración {config_path}: {error}") from error
+
+    def _leer_texto(self, settings: dict, name: str) -> str:
+        value = settings.get(name)
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"{name} debe ser un texto no vacío en config.toml.")
+        return value.strip()

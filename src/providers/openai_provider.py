@@ -1,33 +1,34 @@
 from openai import OpenAI
 
-from prompt_builder import PromptBuilder
-
 from .base import Provider
 
 
 class OpenAIProvider(Provider):
-    """Contiene la llamada específica a la API de OpenAI."""
+    """Envía mensajes a OpenAI y conserva el consumo de la última llamada."""
 
-    def ask(self, prompt: str) -> str:
+    def ask(self, messages, parameters) -> str:
         self.last_usage = None
-        builder = PromptBuilder(prompt, self.config.prompt_path)
-        messages = builder.build_messages()
+        response = self._consultar_api(messages, parameters)
+        self.last_usage = response.usage
+        return self._obtener_texto(response)
+
+    def _crear_cliente(self):
         api_key = self.leer_variable_entorno("OPENAI_API_KEY")
         self.model = self.leer_variable_entorno("OPENAI_MODEL_ID")
+        return OpenAI(api_key=api_key, max_retries=0)
 
-        # Los reintentos se controlan desde call_with_backoff en el router.
-        with OpenAI(api_key=api_key, max_retries=0) as client:
-            response = client.chat.completions.create(
+    def _consultar_api(self, messages: list[dict[str, str]], parameters: dict):
+        with self._crear_cliente() as client:
+            return client.chat.completions.create(
                 model=self.model,
                 messages=messages,
-                max_completion_tokens=builder.parameters["max_output_tokens"],
-                temperature=builder.parameters["temperature"],
-                top_p=builder.parameters["top_p"],
+                max_completion_tokens=parameters["max_output_tokens"],
+                temperature=parameters["temperature"],
+                top_p=parameters["top_p"],
             )
 
-        self.registrar_usage(response.usage)
-        text = response.choices[0].message.content
+    def _obtener_texto(self, response) -> str:
+        text = response.choices[0].message.content if response.choices else None
         if not text:
             raise RuntimeError("OpenAI no devolvió texto para este prompt.")
-
         return text
