@@ -9,6 +9,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from config import AppConfig
+from errors import ConsultaInvalidaError
 from prompt_builder import PromptBuilder
 
 
@@ -40,7 +41,7 @@ class PromptTests(unittest.TestCase):
                     PromptBuilder("Consulta", Path("prompt.yaml")).build_prompt()
 
     def test_empty_query_is_rejected(self):
-        with self.assertRaisesRegex(ValueError, "vacío"):
+        with self.assertRaisesRegex(ConsultaInvalidaError, "vacío"):
             PromptBuilder(" \n", Path("prompt.yaml"))
 
     def test_invalid_yaml_and_parameters_are_rejected(self):

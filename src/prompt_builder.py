@@ -3,6 +3,8 @@ from string import Formatter
 
 import yaml
 
+from errors import ConsultaInvalidaError
+
 
 class PromptBuilder:
     """Prepara el prompt a partir del YAML y la consulta del usuario."""
@@ -20,7 +22,7 @@ class PromptBuilder:
 
     def _validar_consulta(self) -> None:
         if not self.prompt.strip():
-            raise ValueError("El mensaje del usuario no puede estar vacío.")
+            raise ConsultaInvalidaError("El mensaje del usuario no puede estar vacío.")
 
     def _leer_yaml(self) -> dict:
         try:

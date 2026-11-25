@@ -112,13 +112,14 @@ class ApplicationTests(unittest.TestCase):
 
     def test_empty_query_is_rejected_before_building_application(self):
         with patch("main.AppConfig") as factory, \
-                patch.object(sys, "argv", ["main.py", "   "]), redirect_stderr(io.StringIO()):
+                patch.object(sys, "argv", ["main.py", "   "]), redirect_stderr(io.StringIO()) as stderr:
             with self.assertRaises(SystemExit) as error:
                 main()
         self.assertEqual(error.exception.code, 2)
+        self.assertIn("ConsultaInvalidaError", stderr.getvalue())
         factory.assert_not_called()
 
-    def test_invalid_response_is_reported_without_retrying_or_showing_a_result(self):
+    def test_invalid_response_is_reported_after_three_attempts_without_showing_a_result(self):
         for raw in ("No es JSON", '{"category": "account"}',
                     json.dumps(self.response_data | {"confidence": 2})):
             with self.subTest(raw=raw), \
@@ -131,8 +132,10 @@ class ApplicationTests(unittest.TestCase):
                 with self.assertRaises(SystemExit) as error:
                     main()
                 self.assertEqual(error.exception.code, 2)
+                self.assertIn("ContratoInvalidoError", stderr.getvalue())
+                self.assertIn("Se agotaron los 3 intentos", stderr.getvalue())
                 self.assertIn("La respuesta del modelo no cumple el contrato", stderr.getvalue())
-                factory.return_value.ask.assert_called_once()
+                self.assertEqual(factory.return_value.ask.call_count, 3)
                 show_response.assert_not_called()
 
     def test_missing_selected_credentials_have_clear_error(self):

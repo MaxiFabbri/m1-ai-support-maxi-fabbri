@@ -1,5 +1,6 @@
 import argparse
 
+from errors import ConsultaInvalidaError
 from usage import mostrar_usage
 
 
@@ -19,7 +20,7 @@ class SupportCLI:
     def read_arguments(self):
         args = self.parser.parse_args()
         if not args.consulta.strip():
-            self.show_error("La consulta no puede estar vacía.")
+            raise ConsultaInvalidaError("La consulta no puede estar vacía.")
         return args
 
     def show_response(self, answer: str, usage) -> None:
